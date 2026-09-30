@@ -1,0 +1,359 @@
+from collections import Counter
+
+students = [
+    {"name": "Rahim", "subject": "Math", "score": 85},
+    {"name": "Karim", "subject": "Physics", "score": 72},
+    {"name": "Sakib", "subject": "Math", "score": 91},
+    {"name": "Nabil", "subject": "Physics", "score": 65},
+    {"name": "Hasan", "subject": "Math", "score": 78},
+    {"name": "Rafi", "subject": "Chemistry", "score": 88}
+]
+
+def analyze_students(students) :
+ names=[student["name"] for student in students ]
+ subjects=sorted(set(student["subject"] for student in students))
+ scores=[student["score"] for student in students]
+ 
+ total=sum(scores)
+ avg_score=total/len(scores)
+ highest=max(students, key=lambda student : student["score"])
+ lowest=min(students, key=lambda student : student["score"])
+ 
+ print(f"All student names : {names}\nAll subjects : {subjects}\nTotal score : {total}\nAverage score : {avg_score : .2f}\nHighest student name :  {highest['name']}~~~score : {highest['score']}\nLowest student name : {lowest['name']}~~~{lowest['score']}")
+ 
+analyze_students(students)
+
+def group_by_subject(students) :
+    result={}
+    for student in students :
+        subject=student["subject"]
+        if subject not in result :
+            result[subject]=[ ]
+        result[subject].append(student)
+    return result
+
+def subject_statistics(result) :
+    for subject, student_list in result.items() :
+        scores=[student['score'] for student in student_list]
+        total=sum(scores)
+        avg=total/len(students)
+        highest=max(student_list, key= lambda student : student["score"])
+        lowest=min(student_list, key= lambda student : student["score"])
+        print(f"\n\nSubject : {subject}\nTotal score : {total}\nAverage score : {avg: .2f}\nHighest Scorer name  : {highest['name']} >>> {highest['score']} \nLowest scorer name : {lowest['name']} >>> {lowest['score']}")
+        
+result=group_by_subject(students)
+subject_statistics(result)
+
+def categorize_students(students) :
+    categories={
+    "excellent" : [],
+    "good" : [],
+    "need_to_improve" : []
+    }
+    for student in students :
+        score=student["score"]
+        if score>=90 :
+            categories["excellent"].append(student)
+        elif score>=70 :
+            categories["good"].append(student)
+        else :
+            categories["need_to_improve"].append(student)
+    print(f"\n\nExcelent : {categories['excellent']}\nGood : {categories['good']}\nNeed to improve : {categories['need_to_improve']}")
+    return categories
+    
+categories=categorize_students(students)
+print(categories)
+
+def rank_students(students) :
+    print("\n\n")
+    sorted_students=sorted(students, key= lambda student : student["score"], reverse= True )
+    for position,student in enumerate(sorted_students, start=1) :
+        print(f"{position}. {student['name']} >>> {student['score']}")
+        
+rank_students(students)
+
+def search_student(students, name) :
+    found=False
+    for student in students :
+        if student["name"].lower()==name.lower() :
+            print(f"\n\n1. {student['name']}\n2. {student['subject']}\n3. {student['score']} ")
+            found=True
+    if not found :
+         print("\n\nNo student found named : ",name)
+
+search_student(students, "Sahed")
+
+def count_by_subject(students) :
+    subjects=[]
+    for student in students :
+        subjects.append(student['subject'])
+    counted_sub=Counter(subjects)
+    print("\n\n",counted_sub)
+    
+count_by_subject(students)
+
+def update_score(students, name, new_score) :
+    try :
+        new_score=float(new_score)
+    except ValueError :
+        print("Invalid new score")
+        return
+    found=False
+    if new_score>=0 and new_score<=100 :
+     for student in students :
+        if name.lower()==student["name"].lower() :
+            student["score"]=new_score
+            print(f"\n\nStudent score updated")
+            found=True
+     if not found :
+        print("\n\nStudent not found : ",name)
+    else :
+        print("Your new score is invalid")
+        
+update_score(students, "rafi","100")
+
+def update_subject(students, name, new_subject) :
+    found=False
+    for student in students :
+        if name.lower()==student["name"].lower() :
+            student["subject"]=new_subject
+            print("\n\nStudent subject updated")
+            found=True
+            
+    if not found :
+        print("\n\nStudent not found")
+
+update_subject(students, "Rafi", "Math")
+
+def update_student_safe(students, name, new_subject, new_score):
+    try:
+        new_score = float(new_score)
+    except ValueError:
+        print("\n\nInvalid score")
+        return
+
+    if not 0 <= new_score <= 100:
+        print("\n\nInvalid score range")
+        return
+
+    found = False
+
+    for student in students:
+        if name.lower() == student["name"].lower():
+            found = True
+
+            print(f"{student['name']}>>>{student['subject']}>>>{student['score']}")
+
+            choice = input("Confirm update (yes/no?) : ")
+            if choice.lower() == "yes":
+                if subject_same and score_same:
+                    print("No changes made")
+
+                else:
+                    if subject_same:
+                        print("No subject change made")
+                    else:
+                        student["subject"] = new_subject
+                        print("Student subject updated")
+
+                    if score_same:
+                        print("No score change made")
+                    else:
+                        student["score"] = new_score
+                        print("Student score updated")
+
+            elif choice.lower() == "no":
+                print("Update process cancelled")
+
+            else:
+                print("Please choose only between yes & no")
+
+    if not found:
+        print("\n\nStudent not found")
+
+
+update_student_safe(students, "Rafi", "Physics", "100")
+
+def delete_student(students,name) :
+    found=False
+    for i,student in enumerate(students) :
+        if name.lower()==student["name"].lower() :
+            found=True
+            print(f"{student['name']}>>>{student['subject']}>>>{student['score']}")
+            choice=input("Confirm update (yes/no)?  ")
+            if choice.lower()=="yes" :
+                del students[i]
+                print("\n\nstudent deleted successfully")
+            elif choice.lower()=="no" :
+                print("Student deletation cancelled")
+            else :
+                print("Invalid choice ! Choosee between yes & no")
+    if not found :
+            print("Student not found")
+            
+delete_student(students,"j")
+
+def delete_student_by_subject(students,subject) :
+    orginal_count=len(students)
+    students[ : ]=[student for student in students if subject.lower()!=student["subject"].lower()]
+    deleted_count=orginal_count-len(students)
+    if deleted_count==0 :
+        print("No student deleted ")
+    else :
+        print(f"{deleted_count} student(s) deleted")
+        
+delete_student_by_subject(students,"j")
+
+def delete_student_below_score(students,score) :
+    try :
+        score=float(score)
+    except ValueError :
+        print("Invalid score")
+        return
+    orginal_count=len(students)
+    students[ : ]=[student for student in students if student["score"]>=70]
+    deleted_count=orginal_count-len(students)
+    if deleted_count==0 :
+        print("No student deleted")
+    else :
+        print(f"{deleted_count} student(s) deleted")
+        
+delete_student_below_score(students,"j")
+
+def delete_student_by_category(categories,category) :
+    category=category.lower()
+    if category not in categories :
+        print("Invalid category")
+        return
+    deleted_count=len(categories[category])
+    categories[category]=[]
+    if deleted_count==0 :
+        print("No student deleted")
+    else :
+        print(f"{deleted_count} student(s) deleted")
+
+delete_student_by_category(categoris,"bad")
+
+def remove_duplucate_students(students) :
+    seen=set()
+    unique_students=[]
+    for student in students :
+        name=student["name"].lower()
+        if name not in seen :
+            seen.add(name)
+            unique_students.append(student)
+    students[ : ]=unique_students
+    print("Duplicate students removed")
+
+def update_subject_score(students,name,new_score) :
+    for student in students :
+        if student["name"].lower()==name.lower() :
+            student["score"]=new_score
+            print(f"{student['name']} score updated to {new_score}")
+            return True
+            
+    print("student not found")
+    return False
+    
+def delete_student(students,name) :
+    for i,student in enumerate(students) :
+        if student["name"].lower()==name.lower() :
+            del students[i]
+            print(f"{name} deleted successfully")
+            return True 
+    print("Student not found")
+    return False
+    
+def search_student(students,name) :
+    for student in students :
+        if student['name'].lower()==name.lower() :
+            print(f"{student['name']} --- {student['subject']} --- {student['score']}")
+            return student
+            
+    print("Student not found")
+    return None
+    
+def filter_students(students,min_score) :
+    filtered_students=[ ]
+    for student in students :
+        if student["score"]>=min_score :
+            filtered_students.append(student)
+    if not filtered_students :
+        print("No student found")
+        return [ ]        
+    for i,student in enumerate(filtered_students,start=1) :
+        print(f"{i}. {student['name']} --- {student['score']}")
+        
+    return filtered_students
+    
+def sort_students_by_score(students, descending=True) :
+    sorted_students=sorted(students, key=lambda student : student["score"], reverse=descending)
+    for i,student in enumerate(sorted_students, start=1) :
+        print(f"{i}. {student['name']} --- {student['score']} ")
+    return sorted_students
+
+
+def top_students(sorted_students,n) :
+    top=sorted_students[:n]
+    for i,student in enumerate(top,start=1) :
+        print(f"{i}. {student['name']} ---- {student['score']}")
+    return top
+    
+def add_grade(students) :
+    for student in students :
+        score=student["score"]
+        if score>=80 :
+            grade="A+"
+        elif score>=70 :
+            grade="A"
+        elif score>=60 :
+            grade="A-"
+        elif score>=40 :
+            grade="B"
+        else :
+            grade="Fail"
+        student["grade"]=grade
+        print(f"{student['name']} --- {student['subject']} --- {student['score']} --- {student['grade']} ")
+        
+    return students
+    
+def grade_statistics(students) :
+    grades=[student["grade"] for student in students]
+    counts=Counter(grades)
+    
+    for grade,count in counts.items() :
+        print(f"{grade} : {count}")
+    return counts
+    
+def average_score_by_grade(students) :
+    score_by_grade={}
+    for student in students :
+        grade=student["grade"]
+        score=student["score"]
+        if grade not in score_by_grade :
+            score_by_grade[grade]=[ ]
+        score_by_grade[grade].append(score)
+        
+    averages = {}
+    for grade,scores in score_by_grade.items() :
+            averages[grade] = sum(scores)/len(scores)
+            
+            print(f"{grade} : {averages[grade] : .2f} ")
+            
+    return averages
+    
+def subject_statistics(students) :
+    subjects = {}
+    for student in students :
+        subject=student["subject"]
+        score=student["score"]
+        if subject not in subjects :
+            subjects[subject] = [ ]
+        subjects[subject].append(score)
+    averages={}
+    for subject,score in subjects.items() :
+        student=len(score)
+        averages[subject]=sum(score)/len(score)
+        highest=max(score)
+        print(f"{subject} : \nStudents : {student} \nAverage : {averages[subject]}\nHighest : {highest}")
+     return averages
