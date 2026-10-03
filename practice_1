@@ -1,0 +1,101 @@
+expenses = [
+    {"id": 1, "category": "Food", "amount": 250, "date": "2026-09-28"},
+    {"id": 2, "category": "Transport", "amount": 120, "date": "2026-09-28"},
+    {"id": 3, "category": "Food", "amount": 450, "date": "2026-09-29"},
+    {"id": 4, "category": "Shopping", "amount": 1200, "date": "2026-09-29"},
+    {"id": 5, "category": "Transport", "amount": 80, "date": "2026-09-30"},
+    {"id": 6, "category": "Food", "amount": 300, "date": "2026-09-30"},
+    {"id": 7, "category": "Bills", "amount": 900, "date": "2026-10-01"},
+    {"id": 8, "category": "Food", "amount": "abc", "date": "2026-10-01"},
+    {"id": 9, "amount": 300, "date": "2026-10-01"}
+]
+
+def validate_expense(expense) :
+    try :
+        if not isinstance(expense,dict) :
+            return False
+        if "id" not in expense :
+            return False
+        if "category" not in expense :
+            return False
+        if "amount" not in expense :
+            return False
+        if not isinstance(expense["category"],str) :
+            return False
+        amount=float(expense["amount"])
+        if amount<0 :
+            return False
+            
+        return True
+        
+    except (TypeError,ValueError) :
+        return False
+        
+def genarate_report(expenses) :
+    valid_expenses=[ ]
+    for expense in expenses :
+        if validate_expense(expense) :
+            valid_expenses.append(expense)
+        else :
+            print(f"Returning invalid expenses : {expense}")
+        
+    if not valid_expenses :
+        return None
+    
+    total = sum(float(expense["amount"]) for expense in valid_expenses)
+    
+    average= total/len(valid_expenses)
+    
+    highest = max(valid_expenses, key= lambda expense : float(expense["amount"]))
+    
+    lowest = min(valid_expenses, key= lambda expense : float(expense["amount"]))
+    
+    category_totals={}
+    
+    for expense in valid_expenses :
+        category=expense["category"]
+        amount=float(expense["amount"])
+        
+        category_totals[category]= (category_totals.get(category,0) + amount)
+        
+    category_over_500 = [category for category,total_amount in category_totals.items() if total_amount>500]
+    
+    category_count={}
+    
+    for expense in valid_expenses :
+        category=expense["category"]
+        
+        category_count[category]= (category_count.get(category,0) + 1)
+    
+    report = {
+    "total" : total,
+    "average" : average,
+    "highest" : highest["amount"],
+    "lowest" : lowest["amount"],
+    "category_totals" : category_totals,
+    "category_over_500" : category_over_500,
+    "category_count" : category_count,
+    "highest_expense_id " : highest["id"]
+    }
+    
+    return report
+    
+report = genarate_report(expenses)
+
+print("----- EXPENSE REPORT ------")
+
+print("Total : ", report["total"])
+print("Average : ",round(report["average"],2))
+print("Highest : ",report["highest"])
+print("Lowest",report["lowest"])
+
+for category,amount in report["category_totals"].items() :
+    print(f"{category} : {amount}")
+    
+for category,count in report["category_count"].items() :
+    print(f"{category} : {count}")
+    
+for category in report["category_over_500"] :
+    print(category)
+    
+print("Highest expense ID : ",report["highest_expense_id "])
