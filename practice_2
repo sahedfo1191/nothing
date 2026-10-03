@@ -1,0 +1,163 @@
+students = [
+    {
+        "id": 101,
+        "name": "Rahim",
+        "marks": {"Python": 85, "SQL": 78, "DSA": 72}
+    },
+    {
+        "id": 102,
+        "name": "Karim",
+        "marks": {"Python": 92, "SQL": 88, "DSA": 95}
+    },
+    {
+        "id": 103,
+        "name": "Sakib",
+        "marks": {"Python": 65, "SQL": 70, "DSA": 60}
+    },
+    {
+        "id": 104,
+        "name": "Nabil",
+        "marks": {"Python": 45, "SQL": 55, "DSA": 48}
+    },
+    {
+    "id": 105,
+    "name": "Hasan",
+    "marks": {
+        "Python": "abc",
+        "SQL": 70,
+        "DSA": 80}
+     },
+    {
+    "id": 106,
+    "name": "Jamal"
+    }
+]
+
+class Student :
+    def __init__(self,student_id,name,marks) :
+        self.id=student_id
+        self.name=name
+        self.marks=marks
+        
+    def average(self) :
+        return sum(self.marks.values())/len(self.marks)
+        
+    def highest_mark(self) :
+        return max(self.marks.values())
+        
+    def lowest_mark(self) :
+        return min(self.marks.values())
+        
+    def status(self) :
+        if self.average() >=50 :
+            return "pass"
+        else :
+            return "fail"
+            
+def validate_student(student) :
+    try :
+        if not isinstance(student,dict) :
+            return False
+        if "id" not in student :
+            return False
+        if "name" not in student :
+            return False
+        if "marks" not in student :
+            return False
+        
+        if not isinstance(student["marks"],dict) :
+            return False
+        if not student["marks"] :
+            return False
+            
+        for mark in student["marks"].values() :
+            mark=float(mark)
+            if not 0<=mark<=100 :
+                return False
+        return True
+    
+    except (TypeError, ValueError) :
+        return False
+        
+def create_students (data) :
+    valid_students=[ ]
+    for student in data :
+        if validate_student(student) :
+            converted_marks= {subject : float(mark) for subject,mark in student["marks"].items()}
+            
+            obj = Student(
+            student["id"],
+            student["name"],
+            converted_marks
+            )
+            
+            valid_students.append(obj)
+            
+        else :
+            print("Skipping invalid students : ",student)
+            
+    return valid_students
+    
+def genarate_report(students) :
+    if not students :
+        return None
+        
+    passed_students = [student for student in students if student.status() =="pass"]
+    
+    failed_students= [student for student in students if student.status() =="fail"]
+    
+    high_average_students= [student for student in students if student.average() >=80]
+    
+    class_average= sum(student.average() for student in students)/ len(students)
+    
+    highest_average_student= max(students, key= lambda student : student.average())
+    
+    subject_totals= {}
+    subject_counts={}
+    
+    for student in students :
+        for subject,mark in student.marks.items() :
+            subject_totals[subject] = (subject_totals.get(subject,0) + mark)
+            
+            subject_counts[subject] = (subject_counts.get(subject,0) + 1)
+            
+    subject_averages = { subject : subject_totals[subject]/ subject_counts[subject] for subject in subject_totals }
+    
+    return {
+    "passed_count" : len(passed_students),
+    "failed_count" : len(failed_students),
+    "high_average_students" : high_average_students,
+    "class_average" : class_average,
+    "subject_totals" : subject_totals,
+    "subject_averages" : subject_averages,
+    "highest_average_student" : highest_average_student
+    }
+    
+valid_students= create_students(students)
+
+report = genarate_report(valid_students)
+
+print("-------- Student Report ----------")
+
+for student in valid_students :
+    print(f"Student name : {student.name}")
+    print(f"Average mark : {student.average() : .2f}")
+    print(f"Highest mark : {student.highest_mark() : .2f}")
+    print(f"Lowest mark : {student.lowest_mark() : .2f}")
+    print(f"Status : {student.status()}")
+    
+print("---------- Class Report ----------")
+
+print("Class average : ", report["class_average"])
+print("Highest average student : ", report["highest_average_student"].name )
+print("Total passed students : ", report["passed_count"])
+print("Total failed students : ", report["failed_count"])
+
+print("\nStudents with marks over 80 : ")
+
+for student in report["high_average_students"] :
+    print(f"{student.name} : {student.average() : .2f}")
+    
+print("\nSubject averages : ")
+for subject,average in report["subject_averages"].items() :
+    print(f"{subject} : {average : .2f}")
