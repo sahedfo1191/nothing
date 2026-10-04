@@ -1,0 +1,121 @@
+logs = [
+    {"level": "INFO", "user": "Rahim", "action": "login"},
+    {"level": "ERROR", "user": "Karim", "action": "payment_failed"},
+    {"level": "INFO", "user": "Sakib", "action": "logout"},
+    {"level": "WARNING", "user": "Rahim", "action": "wrong_password"},
+    {"level": "ERROR", "user": "Karim", "action": "server_error"},
+    {"level": "INFO", "user": "Karim", "action": "login"},
+    {"level": "ERROR", "user": "Rahim", "action": "database_error"},
+    {"level": "WARNING", "user": "Sakib", "action": "wrong_password"},
+    {"level": "INFO", "user": "Rahim", "action": "logout"},
+    {"level": "DEBUG", "user": "Nabil", "action": "testing"},
+    {"level": "ERROR", "user": "Hasan"},
+    {"level": "INFO", "action": "login"},
+    {"level": "ABC", "user": "Jamal", "action": "test"}
+]
+
+def validate_log(log) :
+    if not isinstance (log,dict) :
+        return False
+    
+    if "level" not in log :
+        return False
+        
+    if "user" not in log :
+        return False
+        
+    if "action" not in log :
+        return False
+        
+    valid_levels= {"INFO","ERROR","WARNING","DEBUG"}
+    
+    if log["level"] not in valid_levels :
+        return False
+        
+    return True
+    
+def analyze_logs(logs) :
+    valid_logs = [ ]
+    
+    for log in logs :
+        if validate_log(log) :
+            valid_logs.append(log)
+            
+    if not valid_logs :
+        return None
+        
+    level_count= {}
+    user_count= {}
+    
+    error_user=set()
+    failed_action=[]
+    
+    error_count= 0
+    warning_count= 0
+    login_count= 0
+    
+    for log in valid_logs :
+        level=log["level"]
+        user=log["user"]
+        action=log["action"]
+        
+        level_count[level]=level_count.get(level,0)+1
+        
+        user_count[user]=user_count.get(user,0)+1
+        
+        if level=="WARNING" :
+            warning_count+=1
+        
+        if level=="ERROR" :
+            error_count+=1
+            error_user.add(user)
+            
+        if action=="login" :
+            login_count+=1
+            
+        if "failed" in action or "error" in action :
+            failed_action.append(action)
+            
+    most_active_user=max(user_count,key=user_count.get)
+        
+    return {
+        "total_logs" : len(valid_logs),
+        "level_count" : level_count,
+        "user_count" : user_count,
+        "error_user" : list(error_user),
+        "warning_count" : warning_count,
+        "error_count" : error_count,
+        "login_count" : login_count,
+        "failed_action" : failed_action,
+        "most_active_user" : most_active_user
+        }
+        
+report= analyze_logs(logs)
+
+print("---------- LOG REPORT ----------")
+
+print("\n\nTotal logs : ",report["total_logs"])
+print("Warning count : ",report["warning_count"])
+print("Error count : ",report["error_count"])
+print("Login count : ",report["login_count"])
+print("Most active user : ",report["most_active_user"])
+
+print("\n\n")
+print("Users count : ")
+for user,count in report["user_count"].items() :
+    print(f"{user} : {count}")
+
+print("\n\n")
+print("Levels count")    
+for level,count in report["level_count"].items() :
+    print(f"{level} : {count}")
+    
+print("\n\n")
+print("Users with error : ")
+for user in report["error_user"] :
+    print(user)
+    
+print("\n\n")
+print("Invalid error action : ")
+for action in report["failed_action"] :
+    print(action)
