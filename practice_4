@@ -1,0 +1,231 @@
+products = [
+    {
+        "id": 101,
+        "name": "Keyboard",
+        "category": "Electronics",
+        "price": 1200,
+        "stock": 15
+    },
+    {
+        "id": 102,
+        "name": "Mouse",
+        "category": "Electronics",
+        "price": 700,
+        "stock": 25
+    },
+    {
+        "id": 103,
+        "name": "Notebook",
+        "category": "Stationery",
+        "price": 120,
+        "stock": 50
+    },
+    {
+        "id": 104,
+        "name": "Pen",
+        "category": "Stationery",
+        "price": 20,
+        "stock": 100
+    },
+    {
+        "id": 105,
+        "name": "Monitor",
+        "category": "Electronics",
+        "price": 15000,
+        "stock": 5
+    },
+
+    # Invalid products
+    {
+        "id": 106,
+        "name": "Broken Item",
+        "category": "Electronics",
+        "price": -500,
+        "stock": 10
+    },
+    {
+        "id": 107,
+        "name": "Missing Stock",
+        "category": "Electronics",
+        "price": 5000
+    }
+]
+
+
+def validate_products(product):
+    try:
+        if not isinstance(product, dict):
+            return False
+
+        if "id" not in product:
+            return False
+
+        if "name" not in product:
+            return False
+
+        if "category" not in product:
+            return False
+
+        if "price" not in product:
+            return False
+
+        if "stock" not in product:
+            return False
+
+        id = int(product["id"])
+        price = int(product["price"])
+        stock = int(product["stock"])
+
+        if price <= 0:
+            return False
+
+        if stock < 0:
+            return False
+
+        return True
+
+    except (TypeError, ValueError):
+        return False
+
+
+def analyze_inventory(products):
+
+    valid_products = []
+
+    for product in products:
+        if validate_products(product):
+            valid_products.append(product)
+        else:
+            print(f"Skipping invalid product {product}")
+
+    if not valid_products:
+        return None
+
+    # Inventory Report
+
+    total_stock = 0
+    total_price = 0
+    total_inventory_value = 0
+
+    out_of_stock = []
+    low_stock = []
+
+    product_value = {}
+    category_stock = {}
+    category_value = {}
+
+    for product in valid_products:
+
+        price = product["price"]
+        stock = product["stock"]
+        name = product["name"]
+        id = product["id"]
+        category = product["category"]
+
+        total_stock += stock
+        total_price += price
+
+        total_inventory_value += price * stock
+
+        # Stock report
+
+        if stock == 0:
+            out_of_stock.append(name)
+
+        if stock < 10:
+            low_stock.append(product)
+
+        # Each product value
+
+        product_value[id] = price * stock
+
+        # Category stock
+
+        category_stock[category] = (
+            category_stock.get(category, 0) + stock
+        )
+
+        # Category value
+
+        category_value[category] = (
+            category_value.get(category, 0) + (price * stock)
+        )
+
+    # Highest stock product
+
+    highest_stock_product = max(
+        valid_products,
+        key=lambda product: product["stock"]
+    )
+
+    # Highest value product
+
+    highest_value_id = max(
+        product_value,
+        key=product_value.get
+    )
+
+    highest_value_product = None
+
+    for product in valid_products:
+        if product["id"] == highest_value_id:
+            highest_value_product = product
+            break
+
+    return {
+        "total_products": len(valid_products),
+        "total_stock": total_stock,
+        "total_inventory_value": total_inventory_value,
+        "average_price": total_price / len(valid_products),
+        "out_of_stock": out_of_stock,
+        "low_stock": low_stock,
+        "highest_stock_product": highest_stock_product,
+        "highest_value_product": highest_value_product,
+        "each_product_value": product_value,
+        "category_stock": category_stock,
+        "category_value": category_value
+    }
+
+
+report = analyze_inventory(products)
+
+
+print("---------- Product Status ----------")
+
+print("Total products:", report["total_products"])
+print("Total stock:", report["total_stock"])
+print("Total inventory value:", report["total_inventory_value"])
+print("Average price:", report["average_price"])
+
+
+print("\n\n--------- Stock Information ----------")
+
+print("Out of stock products:", report["out_of_stock"])
+
+print("Highest stock product:", report["highest_stock_product"])
+
+print("Highest value product:", report["highest_value_product"])
+
+
+print("\n--------- Each Product Value ----------")
+
+for id, value in report["each_product_value"].items():
+    print(f"{id}: {value}")
+
+
+print("\n--------- Category Stock ----------")
+
+for category, stock in report["category_stock"].items():
+    print(f"{category}: {stock}")
+
+
+print("\n--------- Category Value ----------")
+
+for category, value in report["category_value"].items():
+    print(f"{category}: {value}")
+
+
+print("\n--------- Low Stock Products ----------")
+
+for product in report["low_stock"]:
+    print(f"{product['name']}: {product['stock']}")
