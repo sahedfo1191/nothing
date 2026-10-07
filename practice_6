@@ -1,0 +1,299 @@
+orders = [
+    {
+        "order_id": 1001,
+        "customer": "Rahim",
+        "items": [
+            {"name": "Keyboard", "price": 1200, "quantity": 1},
+            {"name": "Mouse", "price": 700, "quantity": 2}
+        ],
+        "status": "completed"
+    },
+
+    {
+        "order_id": 1002,
+        "customer": "Karim",
+        "items": [
+            {"name": "Notebook", "price": 120, "quantity": 5},
+            {"name": "Pen", "price": 20, "quantity": 10}
+        ],
+        "status": "completed"
+    },
+
+    {
+        "order_id": 1003,
+        "customer": "Sakib",
+        "items": [
+            {"name": "Monitor", "price": 15000, "quantity": 1}
+        ],
+        "status": "cancelled"
+    },
+
+    {
+        "order_id": 1004,
+        "customer": "Nabil",
+        "items": [
+            {"name": "Keyboard", "price": 1200, "quantity": 2},
+            {"name": "Monitor", "price": 15000, "quantity": 1}
+        ],
+        "status": "completed"
+    },
+
+    # Invalid
+    {
+        "order_id": 1005,
+        "customer": "Hasan",
+        "items": [],
+        "status": "completed"
+    },
+
+    # Invalid
+    {
+        "order_id": 1006,
+        "customer": "Jamal",
+        "status": "completed"
+    }
+]
+
+
+def validate_order(order):
+
+    try:
+
+        if not isinstance(order, dict):
+            return False
+
+        required = [
+            "order_id",
+            "customer",
+            "items",
+            "status"
+        ]
+
+        for key in required:
+
+            if key not in order:
+                return False
+
+        items = order["items"]
+
+        if not isinstance(items, list):
+            return False
+
+        if not items:
+            return False
+
+        item_required = [
+            "name",
+            "price",
+            "quantity"
+        ]
+
+        for item in items:
+
+            if not isinstance(item, dict):
+                return False
+
+            for key in item_required:
+
+                if key not in item:
+                    return False
+
+            price = int(item["price"])
+            quantity = int(item["quantity"])
+
+            if price <= 0:
+                return False
+
+            if quantity <= 0:
+                return False
+
+        if order["status"] not in [
+            "completed",
+            "cancelled"
+        ]:
+            return False
+
+        return True
+
+    except (TypeError, ValueError):
+
+        return False
+
+
+def process_orders(orders):
+
+    valid_orders = []
+
+    for order in orders:
+
+        if validate_order(order):
+            valid_orders.append(order)
+
+        else:
+            print(
+                f"Skipping invalid order: "
+                f"{order.get('order_id', 'Unknown')}"
+            )
+
+    completed_orders = []
+    cancelled_orders = []
+
+    for order in valid_orders:
+
+        if order["status"] == "completed":
+            completed_orders.append(order)
+
+        elif order["status"] == "cancelled":
+            cancelled_orders.append(order)
+
+    customer_spending = {}
+    product_quantities = {}
+    order_values = {}
+
+    for order in completed_orders:
+
+        order_id = order["order_id"]
+        customer = order["customer"]
+        items = order["items"]
+
+        order_total = 0
+
+        for item in items:
+
+            item_total = (
+                item["price"] * item["quantity"]
+            )
+
+            order_total += item_total
+
+            customer_spending[customer] = (
+                customer_spending.get(customer, 0)
+                + item_total
+            )
+
+            product_quantities[item["name"]] = (
+                product_quantities.get(item["name"], 0)
+                + item["quantity"]
+            )
+
+        order_values[order_id] = order_total
+
+    total_revenue = sum(
+        customer_spending.values()
+    )
+
+    average_order_value = (
+        total_revenue / len(completed_orders)
+    )
+
+    highest_value_order = max(
+        order_values,
+        key=order_values.get
+    )
+
+    most_sold_product = max(
+        product_quantities,
+        key=product_quantities.get
+    )
+
+    return {
+
+        "total_orders":
+            len(valid_orders),
+
+        "completed_orders":
+            len(completed_orders),
+
+        "cancelled_orders":
+            len(cancelled_orders),
+
+        "total_revenue":
+            total_revenue,
+
+        "average_order_value":
+            average_order_value,
+
+        "highest_value_order":
+            highest_value_order,
+
+        "customer_spending":
+            customer_spending,
+
+        "product_quantities":
+            product_quantities,
+
+        "most_sold_product":
+            most_sold_product
+    }
+
+
+report = process_orders(orders)
+
+
+print("---------- Order Information ----------")
+
+
+print(
+    "\nTotal orders:",
+    report["total_orders"]
+)
+
+
+print(
+    "\nCompleted orders:",
+    report["completed_orders"]
+)
+
+
+print(
+    "\nCancelled orders:",
+    report["cancelled_orders"]
+)
+
+
+print(
+    "\nTotal revenue:",
+    report["total_revenue"]
+)
+
+
+print(
+    f"\nAverage order value: "
+    f"{report['average_order_value']:.2f}"
+)
+
+
+print(
+    "\nHighest value order:",
+    report["highest_value_order"]
+)
+
+
+print("\nCustomer spending:")
+
+for i, (customer, spending) in enumerate(
+    report["customer_spending"].items(),
+    start=1
+):
+
+    print(
+        f"{i}. {customer}: {spending}"
+    )
+
+
+print("\nProduct quantities:")
+
+for i, (name, quantity) in enumerate(
+    report["product_quantities"].items(),
+    start=1
+):
+
+    print(
+        f"{i}. {name}: {quantity}"
+    )
+
+
+print(
+    "\nMost sold product:",
+    report["most_sold_product"]
+)
