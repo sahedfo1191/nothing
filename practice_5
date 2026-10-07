@@ -1,0 +1,280 @@
+employees = [
+    {
+        "id": 101,
+        "name": "Rahim",
+        "department": "IT",
+        "salary": 45000,
+        "scores": [85, 90, 78]
+    },
+    {
+        "id": 102,
+        "name": "Karim",
+        "department": "HR",
+        "salary": 38000,
+        "scores": [72, 80, 75]
+    },
+    {
+        "id": 103,
+        "name": "Sakib",
+        "department": "IT",
+        "salary": 52000,
+        "scores": [95, 88, 92]
+    },
+    {
+        "id": 104,
+        "name": "Nabil",
+        "department": "Sales",
+        "salary": 30000,
+        "scores": [60, 65, 58]
+    },
+    {
+        "id": 105,
+        "name": "Hasan",
+        "department": "HR",
+        "salary": 42000,
+        "scores": [88, 91, 85]
+    },
+
+    # Invalid employees
+    {
+        "id": 106,
+        "name": "Jamal",
+        "department": "IT",
+        "salary": -1000,
+        "scores": [80, 85, 90]
+    },
+    {
+        "id": 107,
+        "name": "Rafi",
+        "department": "Sales",
+        "salary": 35000
+    }
+]
+
+
+def validate_emp(emp):
+    try:
+        if not isinstance(emp, dict):
+            return False
+
+        required = [
+            "id",
+            "name",
+            "department",
+            "salary",
+            "scores"
+        ]
+
+        for item in required:
+            if item not in emp:
+                return False
+
+        salary = int(emp["salary"])
+        scores = emp["scores"]
+
+        if salary <= 0:
+            return False
+
+        if not isinstance(scores, list):
+            return False
+
+        if not scores:
+            return False
+
+        for score in scores:
+
+            if not isinstance(score, (int, float)):
+                return False
+
+            if score < 0 or score > 100:
+                return False
+
+        return True
+
+    except (TypeError, ValueError):
+        return False
+
+
+def analyze_emp(employees):
+
+    valid_emp = []
+
+    for emp in employees:
+
+        if validate_emp(emp):
+            valid_emp.append(emp)
+
+        else:
+            print(f"Skipping invalid employee: {emp}")
+
+    if not valid_emp:
+        return None
+
+    total_salary = 0
+    total_performance = 0
+
+    passed_emp = []
+    failed_emp = []
+
+    individual_performance = {}
+    department_emp_count = {}
+    department_performance_total = {}
+
+    for emp in valid_emp:
+
+        emp_id = emp["id"]
+        salary = emp["salary"]
+        department = emp["department"]
+        scores = emp["scores"]
+
+        total_salary += salary
+
+        average_score = sum(scores) / len(scores)
+
+        total_performance += average_score
+
+        if average_score >= 70:
+            passed_emp.append(emp)
+
+        else:
+            failed_emp.append(emp)
+
+        individual_performance[emp_id] = average_score
+
+        department_performance_total[department] = (
+            department_performance_total.get(department, 0)
+            + average_score
+        )
+
+        department_emp_count[department] = (
+            department_emp_count.get(department, 0)
+            + 1
+        )
+
+    average_salary = total_salary / len(valid_emp)
+
+    average_performance = (
+        total_performance / len(valid_emp)
+    )
+
+    highest_performer = max(
+        individual_performance,
+        key=individual_performance.get
+    )
+
+    highest_salary_employee = max(
+        valid_emp,
+        key=lambda emp: emp["salary"]
+    )
+
+    department_average_performance = {}
+
+    for department, total in department_performance_total.items():
+
+        department_average_performance[department] = (
+            total / department_emp_count[department]
+        )
+
+    return {
+        "total_employees": len(valid_emp),
+
+        "average_salary": average_salary,
+
+        "average_performance": average_performance,
+
+        "highest_performer": highest_performer,
+
+        "highest_salary_employee": highest_salary_employee,
+
+        "passed_employees": passed_emp,
+
+        "failed_employees": failed_emp,
+
+        "individual_performance": individual_performance,
+
+        "department_employee_count": department_emp_count,
+
+        "department_average_performance":
+            department_average_performance
+    }
+
+
+report = analyze_emp(employees)
+
+
+print("\n---------- Employees Report ----------")
+
+
+print(
+    "\nTotal employees:",
+    report["total_employees"]
+)
+
+
+print(
+    f"\nAverage salary: "
+    f"{report['average_salary']:.2f}"
+)
+
+
+print(
+    f"\nAverage performance: "
+    f"{report['average_performance']:.2f}"
+)
+
+
+print("\nHighest salary employee:")
+
+print(report["highest_salary_employee"])
+
+
+print("\nHighest performer:")
+
+for emp in employees:
+
+    if emp["id"] == report["highest_performer"]:
+        print(emp["name"])
+
+
+print("\nPassed employees:")
+
+for position, emp in enumerate(
+    report["passed_employees"],
+    start=1
+):
+
+    print(f"{position}. {emp}")
+
+
+print("\nFailed employees:")
+
+for emp in report["failed_employees"]:
+
+    print(emp)
+
+
+print("\nDepartment employee count:")
+
+for department, count in report[
+    "department_employee_count"
+].items():
+
+    print(f"{department}: {count}")
+
+
+print("\nIndividual performance:")
+
+for emp_id, average in report[
+    "individual_performance"
+].items():
+
+    print(f"{emp_id}: {average:.2f}")
+
+
+print("\nDepartment average performance:")
+
+for department, average in report[
+    "department_average_performance"
+].items():
+
+    print(f"{department}: {average:.2f}")
