@@ -1,0 +1,335 @@
+
+import json
+
+
+class SupportTicketManager:
+    VALID_CATEGORIES = ["Technical", "Billing", "General"]
+    VALID_PRIORITIES = ["Low", "Medium", "High", "Critical"]
+    VALID_STATUSES = ["Open", "In Progress", "Closed"]
+
+    def __init__(self, tickets=None):
+        self.tickets = tickets if tickets is not None else []
+
+    # 1. Validation
+    def validate_ticket(self, ticket):
+        if not isinstance(ticket, dict):
+            return False
+
+        required = {
+            "id", "customer", "category",
+            "priority", "status", "messages"
+        }
+
+        if not required.issubset(ticket.keys()):
+            return False
+
+        if not isinstance(ticket["id"], int) or isinstance(ticket["id"], bool):
+            return False
+
+        if not isinstance(ticket["customer"], str) or not ticket["customer"].strip():
+            return False
+
+        if ticket["category"] not in self.VALID_CATEGORIES:
+            return False
+
+        if ticket["priority"] not in self.VALID_PRIORITIES:
+            return False
+
+        if ticket["status"] not in self.VALID_STATUSES:
+            return False
+
+        if not isinstance(ticket["messages"], list):
+            return False
+
+        if not all(isinstance(message, str) for message in ticket["messages"]):
+            return False
+
+        return True
+
+    # 2. Add ticket
+    def add_ticket(self, ticket):
+        if not self.validate_ticket(ticket):
+            print("Invalid ticket. Ticket not added.")
+            return False
+
+        if any(existing["id"] == ticket["id"] for existing in self.tickets):
+            print("Ticket ID already exists.")
+            return False
+
+        self.tickets.append(ticket)
+        print("Ticket added successfully.")
+        return True
+
+    # 3. Search tickets
+    def search_tickets(self, field, value):
+        valid_fields = {
+            "id", "customer", "category",
+            "priority", "status"
+        }
+
+        if field not in valid_fields:
+            print("Invalid search field.")
+            return []
+
+        return [
+            ticket for ticket in self.tickets
+            if ticket[field] == value
+        ]
+
+    # 4. Update status
+    def update_status(self, ticket_id, new_status):
+        if new_status not in self.VALID_STATUSES:
+            print("Invalid status.")
+            return False
+
+        for ticket in self.tickets:
+            if ticket["id"] == ticket_id:
+                ticket["status"] = new_status
+                print("Ticket status updated successfully.")
+                return True
+
+        print("Ticket not found.")
+        return False
+
+    # 5. Add message
+    def add_message(self, ticket_id, message):
+        if not isinstance(message, str) or not message.strip():
+            print("Invalid message.")
+            return False
+
+        for ticket in self.tickets:
+            if ticket["id"] == ticket_id:
+                ticket["messages"].append(message)
+                print("Message added successfully.")
+                return True
+
+        print("Ticket not found.")
+        return False
+
+    # 6. Statistics
+    def statistics(self):
+        total = len(self.tickets)
+
+        open_tickets = sum(
+            ticket["status"] == "Open"
+            for ticket in self.tickets
+        )
+
+        closed_tickets = sum(
+            ticket["status"] == "Closed"
+            for ticket in self.tickets
+        )
+
+        category_counts = {}
+        priority_counts = {}
+        customer_counts = {}
+
+        for ticket in self.tickets:
+            category = ticket["category"]
+            category_counts[category] = category_counts.get(category, 0) + 1
+
+            priority = ticket["priority"]
+            priority_counts[priority] = priority_counts.get(priority, 0) + 1
+
+            customer = ticket["customer"]
+            customer_counts[customer] = customer_counts.get(customer, 0) + 1
+
+        most_common_category = (
+            max(category_counts, key=category_counts.get)
+            if category_counts else None
+        )
+
+        most_common_customer = (
+            max(customer_counts, key=customer_counts.get)
+            if customer_counts else None
+        )
+
+        priority_order = {
+            "Critical": 4,
+            "High": 3,
+            "Medium": 2,
+            "Low": 1
+        }
+
+        open_tickets_list = [
+            ticket for ticket in self.tickets
+            if ticket["status"] == "Open"
+        ]
+
+        highest_priority_open = max(
+            open_tickets_list,
+            key=lambda ticket: priority_order[ticket["priority"]],
+            default=None
+        )
+
+        return {
+            "total": total,
+            "open": open_tickets,
+            "closed": closed_tickets,
+            "category_counts": category_counts,
+            "priority_counts": priority_counts,
+            "most_common_category": most_common_category,
+            "most_common_customer": most_common_customer,
+            "highest_priority_open": highest_priority_open
+        }
+
+    # 7. Save to JSON
+    def save_to_json(self, filename):
+        try:
+            with open(filename, "w", encoding="utf-8") as file:
+                json.dump(self.tickets, file, indent=4)
+
+            print("Tickets saved successfully.")
+            return True
+
+        except (OSError, TypeError, ValueError) as error:
+            print(f"Could not save tickets: {error}")
+            return False
+
+    # 8. Load from JSON
+    def load_from_json(self, filename):
+        try:
+            with open(filename, "r", encoding="utf-8") as file:
+                data = json.load(file)
+
+            if not isinstance(data, list):
+                print("Invalid JSON structure.")
+                return False
+
+            valid_tickets = []
+            seen_ids = set()
+
+            for ticket in data:
+                if not self.validate_ticket(ticket):
+                    print("Skipping invalid ticket:", ticket)
+                    continue
+
+                if ticket["id"] in seen_ids:
+                    print("Skipping duplicate ticket ID:", ticket["id"])
+                    continue
+
+                valid_tickets.append(ticket)
+                seen_ids.add(ticket["id"])
+
+            self.tickets = valid_tickets
+            print("Tickets loaded successfully.")
+            return True
+
+        except FileNotFoundError:
+            print("File does not exist.")
+            return False
+
+        except json.JSONDecodeError:
+            print("Invalid JSON file.")
+            return False
+
+        except OSError as error:
+            print(f"File error: {error}")
+            return False
+
+
+# Sample data
+tickets = [
+    {
+        "id": 101,
+        "customer": "Rahim",
+        "category": "Technical",
+        "priority": "High",
+        "status": "Open",
+        "messages": ["App crashes when I login"]
+    },
+    {
+        "id": 102,
+        "customer": "Karim",
+        "category": "Billing",
+        "priority": "Medium",
+        "status": "Closed",
+        "messages": ["I was charged twice"]
+    },
+    {
+        "id": 103,
+        "customer": "Sakib",
+        "category": "Technical",
+        "priority": "Critical",
+        "status": "Open",
+        "messages": ["Cannot access account"]
+    },
+    {
+        "id": 104,
+        "customer": "Nabil",
+        "category": "General",
+        "priority": "Low",
+        "status": "Open",
+        "messages": ["How can I change my username?"]
+    },
+    {
+        "id": 105,
+        "customer": "Hasan",
+        "category": "Billing",
+        "priority": "High",
+        "status": "Open",
+        "messages": ["Refund has not arrived"]
+    }
+]
+
+
+# Create manager
+manager = SupportTicketManager(tickets)
+
+# Add ticket
+new_ticket = {
+    "id": 106,
+    "customer": "Jamal",
+    "category": "Technical",
+    "priority": "Medium",
+    "status": "Open",
+    "messages": ["Password reset is not working"]
+}
+
+manager.add_ticket(new_ticket)
+
+# Search
+results = manager.search_tickets("category", "Technical")
+
+print("\nTechnical Tickets:")
+for ticket in results:
+    print(ticket)
+
+# Update status
+manager.update_status(106, "In Progress")
+
+# Add message
+manager.add_message(
+    106,
+    "I also tried resetting it from another device."
+)
+
+# Statistics
+stats = manager.statistics()
+
+print("\n===== STATISTICS =====")
+print("Total tickets:", stats["total"])
+print("Open tickets:", stats["open"])
+print("Closed tickets:", stats["closed"])
+
+print("\nTickets by category:")
+for category, count in stats["category_counts"].items():
+    print(category, ":", count)
+
+print("\nTickets by priority:")
+for priority, count in stats["priority_counts"].items():
+    print(priority, ":", count)
+
+print("\nMost common category:", stats["most_common_category"])
+print("Customer with most tickets:", stats["most_common_customer"])
+print("Highest priority open ticket:", stats["highest_priority_open"])
+
+# Save
+manager.save_to_json("tickets.json")
+
+# Load into a new manager
+new_manager = SupportTicketManager()
+if new_manager.load_from_json("tickets.json"):
+    print("\nLoaded tickets:")
+    for ticket in new_manager.tickets:
+        print(ticket)
