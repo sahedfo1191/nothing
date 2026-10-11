@@ -1,0 +1,412 @@
+import json
+
+class SalesAnalyzer :
+    VALID_STATUSES={"Pending","Completed","Cancelled"}
+    
+    REQUIRED_FIELDS={
+            "order_id",
+            "customer",
+            "product",
+            "quantity",
+            "unit_price",
+            "status"
+    }
+    
+    def __init__(self,orders=None) :
+        self.orders=[ ]
+        
+        if orders is not None :
+            for order in orders :
+                self.add_order(order,show_message=False)
+    
+    # VALIDATION CHECK
+    
+    
+    def validate_order(self,order) :
+        if not isinstance(order,dict) :
+            return False
+            
+        if not self.REQUIRED_FIELDS.issubset(order.keys()) :
+            return False
+            
+        id=order["order_id"]
+        customer=order["customer"]
+        product=order["product"]
+        quantity=order["quantity"]
+        price=order["unit_price"]
+        status=order["status"]
+        
+        if isinstance(id,bool) or not isinstance(id,int) :
+            return False
+            
+        if id<=0 :
+            return False
+        
+        if not isinstance(customer,str) or not customer.strip() :
+            return False
+            
+        if not isinstance(product,str) or not product.strip() :
+            return False
+            
+        if isinstance(quantity,bool) or not isinstance(quantity,(int,float)) :
+            return False
+            
+        if quantity<=0 :
+            return False
+            
+        if isinstance(price,bool) or not isinstance(price,(int,float)) :
+            return False
+            
+        if price<=0 :
+            return False
+            
+        if status not in self.VALID_STATUSES :
+            return False
+            
+        return True
+        
+    # ADD ORDER
+    
+    def add_order(self,order,show_message=True) :
+        if not self.validate_order(order) :
+            if show_message :
+                print("Invalid order record")
+                
+            return False
+            
+        if any(
+            existing["order_id"]==order["order_id"] 
+            for existing in self.orders
+        ) :
+            if show_message :
+                print("Duplicate order id")
+            return False
+            
+        new_order=order.copy()
+        new_order["customer"]=new_order["customer"].strip()
+        new_order["product"]=new_order["product"].strip()
+        
+        self.orders.append(new_order)
+        
+        if show_message :
+            print("Order added successfully")
+        
+        return True
+        
+    # SEARCH ORDER
+    
+    def search_orders(self,field,value) :
+        allowed_fields={
+            "order_id",
+            "customer",
+            "product",
+            "unit_price",
+            "status"
+        }
+        
+        if field not in allowed_fields :
+            print("Invalid search field")
+            return [ ]
+        
+        return [
+            order for order in self.orders
+            if order[field]==value
+        ]
+        
+    # SEARCH ALL ORDERS FOR ONE CUSTOMER
+    
+    def search_for_customer(self,customer) :
+        return self.search_orders("customer",customer)
+        
+    # GET COMPLETED ORDERS 
+    
+    def completed_orders(self) :
+        return [
+            order for order in self.orders
+            if order["status"]=="Completed"
+        ]
+        
+    # CALCULATE TOTAL REVENUE
+    
+    def total_revenue(self) :
+        return sum(
+            order["quantity"]*order["unit_price"]
+            for order in self.completed_orders())
+            
+    # REVENUE PER PRODUCT 
+    
+    def revenue_per_product(self) :
+        revenue={}
+        
+        for order in self.completed_orders() :
+            product=order["product"]
+            amount=order["unit_price"]*order["quantity"]
+            revenue[product]=revenue.get(product,0)+amount
+            
+        return revenue
+        
+    # REVENUE PER CUSTOMER
+    
+    def revenue_per_customer(self) :
+        revenue={}
+        
+        for order in self.completed_orders() :
+            customer=order["customer"]
+            amount=order["unit_price"]*order["quantity"]
+            revenue[customer]=(
+                revenue.get(customer,0)
+                +amount
+            )
+            
+        return revenue
+     
+
+    # BEST SELLING PRODUCT  
+    
+    def best_selling_product(self) :
+        quantities={}
+        for order in self.orders :
+            quantity=order["quantity"]
+            product=order["product"]
+            quantities[product]=(
+                quantities.get(product,0)
+                +quantity
+            )
+        if not quantities :
+            return None
+        best_product=max(
+            quantities, key=quantities.get
+        )
+        return {
+            "product" : best_product,
+            "quantity" : quantities[best_product]
+        }
+        
+    
+    # CUDTOMER WHO SPEND THE MOST
+    
+    def top_spending_customer(self) :
+        spending=self.revenue_per_customer()
+        
+        if not spending :
+            return None
+            
+        customer=max(spending, key=spending.get)
+        
+        return {
+            "customer" : customer,
+            "spending" : spending[customer]
+        }
+        
+        
+    # COUNTS ORDERS BY STATUS
+    
+    def order_counts(self) :
+        counts={
+            status: 0 for status in self.VALID_STATUSES
+        }
+        
+        for order in self.orders :
+            counts[order["status"]]+=1
+            
+        return counts
+        
+        
+    # UPDATE ORDER STATUS
+    
+    def update_status(self,order_id,new_status) :
+        if new_status not in self.VALID_STATUSES :
+            print("Invalid status")
+            return False
+            
+        for order in self.orders :
+            if order_id==order["order_id"] :
+                order["status"]=new_status
+                print("Status updated successfully")
+                return True
+                
+        print("Order id not found")
+        return False
+        
+    
+    # SAVE ORDERS TO JSON
+    
+    def save_orders(self, filename="orders.json") :
+        try :
+            with open(filename,"w",encoding="utf-8") as file :
+                json.dump(self.orders,file,indent=4)
+                
+            print("Order saved successfully")
+            return True
+            
+        except OSError as error :
+            print(f"Could not save orders : {error}") 
+            return False
+            
+    
+    #LOAD ORDERS FROM JSON
+    
+    def load_orders(self,filename="orders.json") :
+        try :
+            with open(filename, "r") as file :
+                data=json.load(file)
+            if not isinstance(data,list) :
+                print("Invalid file formate . Expecting a list")
+                return False
+        except FileNotFoundError :
+            print("File not found")
+            return False
+        except json.JSONDecodeError :
+            print("The json file contains invalid data")
+            return False
+               
+        except OSError as error :
+            print(f"Could not read file : {error}")
+            return False
+            
+        loaded_orders=[ ]
+        seen_ids=set( )
+        skipped=0
+        
+        for order in data :
+            if not self.validate_order(order) :
+                skipped+=1
+                continue
+                
+            order_id=order["order_id"]
+            
+            if order_id in seen_ids :
+                skipped+=1
+                continue
+            
+            new_order=order.copy()
+            new_order["customer"] =order["customer"].strip()
+            new_order["product"]= order["product"].strip()
+            
+            loaded_orders.append(new_order)
+            seen_ids.add(order_id)
+            
+        self.orders=loaded_orders
+        
+        print(f"Loaded {len(self.orders)} valid orders")
+        print(f"Skipped {skipped} invalid orders")
+        
+        return True
+        
+    # DISPLAY BUSINESS REPORT
+    
+    def business_report(self) :
+        print("---------- Buisness Report ----------")
+        
+        print(f"\n\nTotal complete revenue {self.total_revenue():,} : BDT")
+        
+        print("\nRevenue per product : ")
+        for product,amount in self.revenue_per_product().items() :
+            print(f"{product} : {amount :,} BDT")
+            
+        print(f"\nRevenue per customer : ")
+        for customer,amount in self.revenue_per_customer().items() :
+            print(f"{customer} : {amount:,} BDT")
+            
+        best = self.best_selling_product()
+        
+        print(f"\nBest selling product : ")
+        if best :
+            print(f"{best['product']} : {best['quantity']} units sold.")
+        else :
+            print("No completed sales")
+            
+        top_customer= self.top_spending_customer()
+        
+        print("\nTop spending customer : ")
+        if top_customer :
+            print(f"{top_customer['customer']} : {top_customer['spending']} BDT")
+        
+        else :
+            print("No completed sales")
+            
+        print(f"\nOrder counts : ")
+        for status,count in self.order_counts().items() :
+            print(f"{status} : {count}")
+            
+        print("--------------------------------")
+
+
+orders = [
+    {
+        "order_id": 201,
+        "customer": "Rahim",
+        "product": "Keyboard",
+        "quantity": 2,
+        "unit_price": 1200,
+        "status": "Completed"
+    },
+    {
+        "order_id": 202,
+        "customer": "Karim",
+        "product": "Mouse",
+        "quantity": 3,
+        "unit_price": 500,
+        "status": "Completed"
+    },
+    {
+        "order_id": 203,
+        "customer": "Rahim",
+        "product": "Monitor",
+        "quantity": 1,
+        "unit_price": 15000,
+        "status": "Pending"
+    },
+    {
+        "order_id": 204,
+        "customer": "Sakib",
+        "product": "Keyboard",
+        "quantity": 1,
+        "unit_price": 1200,
+        "status": "Completed"
+    },
+    {
+        "order_id": 205,
+        "customer": "Nabil",
+        "product": "Mouse",
+        "quantity": 2,
+        "unit_price": 500,
+        "status": "Cancelled"
+    },
+    {
+        "order_id": 206,
+        "customer": "Hasan",
+        "product": "Monitor",
+        "quantity": 2,
+        "unit_price": 15000,
+        "status": "Completed"
+    }
+]
+
+
+analyzer=SalesAnalyzer(orders)
+
+
+analyzer.business_report()
+
+print("Rahim's orders:")
+for order in analyzer.search_for_customer("Rahim"):
+    print(order)
+
+new_order = {
+    "order_id": 207,
+    "customer": "Karim",
+    "product": "Keyboard",
+    "quantity": 1,
+    "unit_price": 1200,
+    "status": "Pending"
+}
+
+analyzer.add_order(new_order)
+
+analyzer.update_status(207, "Completed")
+
+print("\nReport after updating order 207:")
+analyzer.business_report()
+
+analyzer.save_orders()
