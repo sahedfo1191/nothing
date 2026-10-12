@@ -1,0 +1,396 @@
+import json 
+
+class FeedbackAnalyzer :
+    VALID_RATING=[1,2,3,4,5]
+    
+    REQUIRED_FIELDS={
+            "feedback_id",
+            "customer",
+            "product",
+            "rating",
+            "comment"
+    }
+    
+    def __init__(self,feedback_records=None) :
+        self.feedback_records=[ ]
+        self.feedback_ids=set( )
+            
+        if feedback_records is not None :
+            for feedback in feedback_records :
+                self.add_feedback(feedback)
+
+
+    # Validation Check
+    
+    def validate_feedback(self,feedback) :
+        
+        if not isinstance(feedback,dict) :
+            return False
+            
+        for field in self.REQUIRED_FIELDS :
+            if field not in feedback :
+                return False
+            
+        feedback_id=feedback["feedback_id"]
+        customer=feedback["customer"]
+        product=feedback["product"]
+        rating=feedback["rating"]
+        comment=feedback["comment"]
+        
+        if isinstance(feedback_id,bool) or not isinstance(feedback_id,int) :
+            return False
+        
+        if feedback_id<=0 :
+            return False
+            
+        if not isinstance(customer,str) or not customer.strip() :
+            return False
+            
+        if not isinstance(product,str) or not product.strip() :
+            return False
+            
+        if isinstance(rating,bool) or not isinstance(rating,int) :
+            return False
+        
+        if rating not in self.VALID_RATING :
+            return False
+            
+        if not isinstance(comment,str) or not comment.strip() :
+            return False
+            
+        return True
+        
+    
+    # Add Feedback
+    
+    def add_feedback(self,feedback) :
+        if not self.validate_feedback(feedback) :
+            print("Invalid feedback records")
+            return False
+            
+        feedback_id=feedback["feedback_id"]
+        
+        if feedback_id in self.feedback_ids :
+            print("Duplicate feedback ID")
+            return False
+            
+        # Storing a copy
+        
+        feedback=feedback.copy()
+        
+        feedback["customer"]=feedback["customer"].strip()
+        feedback["product"]=feedback["product"].strip()
+        feedback["comment"]=feedback["comment"].strip()
+        
+        self.feedback_records.append(feedback)
+        self.feedback_ids.add(feedback_id)
+        
+        return True
+        
+    
+    # Search feedback
+    
+    def search_feedback(self,field,value) :
+        allowed_fields={
+            "feedback_id",
+            "customer",
+            "product",
+            "rating"
+        }
+        
+        if field not in allowed_fields :
+            print("Invalid search field")
+            return False
+                
+        return [
+            feedback for feedback in self.feedback_records 
+            if feedback[field]==value
+        ]
+        
+        
+    # Average rating
+    
+    def average_rating(self, records=None) :
+        if records is None :
+            records=self.feedback_records
+        if not records :
+            return 0.0
+            
+        total=sum(feedback["rating"] for feedback in records)
+        
+        return total/len(records)
+        
+    
+    # Positive feedback records count
+    
+    def positive_feedback_count(self) :
+        return sum(
+            1 for feedback in self.feedback_records
+            if feedback["rating"]>=4
+        )
+        
+    
+    # Negative feedback records count
+    
+    def negative_feedback_count(self) :
+        return sum(
+            1 for feedback in self.feedback_records
+            if feedback["rating"]<=2
+        )
+        
+    
+    # Calculate the average rating for each product
+    
+    def product_average_rating(self) :
+        product_rating={ }
+        
+        for feedback in self.feedback_records :
+            product= feedback["product"]
+            
+            if product not in product_rating :
+                product_rating[product]=[ ]
+            
+            product_rating[product].append(feedback["rating"])
+        
+        average={ }
+        
+        for product,ratings in product_rating.items() :
+            average[product]=sum(ratings)/len(ratings)
+            
+        return average
+        
+    
+    # Highest rated product
+        
+    def highest_rated_product(self) :
+        averages=self.product_average_rating()
+        
+        if not averages :
+            return None
+            
+        highest_average=max(averages.values())
+        
+        return {
+            product : average
+            for product,average in averages.items()
+            if average==highest_average
+        }
+        
+    
+    # Average rating below 3
+    
+    def low_rated_products(self) :
+        averages= self.product_average_rating()
+        
+        return {
+            product : average
+            for product,average in averages.items()
+            if average<3
+        }
+        
+    # Save Feedback to json
+    
+    def save_to_json(self,filename="feedback.json") :
+        
+        try :
+            with open(filename, "w", encoding="utf-8") as file :
+                json.dump(
+                    self.feedback_records,
+                    file,
+                    indent=4,
+                    ensure_ascii=False
+                )
+                
+            print("Feedback save to : ",filename)
+            return True
+        
+        except OSError as error :
+            print(f"File saving error : {error}")
+            
+    
+    # Load feedback from json
+    
+    def load_from_json(self,filename="feedback.json") :
+        try :
+            with open(filename, "r", encoding="utf-8") as file :
+                data=json.load(file)
+                
+        except FileNotFoundError :
+            print("File not found")
+            return False
+            
+        except json.JSONDecodeError :
+            print("Invalid json formate")
+            return False
+            
+        except OSError as error :
+            print("File loading error : ",error)
+            return False
+            
+        if not isinstance(data,list) :
+            print("Feedback data must contain a list of feedback")
+            return False
+            
+        loaded=0
+        skipped=0
+        
+        for feedback in data :
+            if self.add_feedback(feedback) :
+                loaded+=1
+            else :
+                skipped+=1
+        
+        print(f"Loaded file : {loaded} \nSkipped file : {skipped}")
+        return True
+        
+    
+    # Display feedback records
+    
+    def display_feedback(self,records=None) :
+        if records is None :
+            records= self.feedback_records
+            
+        if not records :
+            print("No feedback records found")
+            return
+        
+        print("\n")    
+        for feedback in records:
+            print(
+                f"ID: {feedback['feedback_id']} | "
+                f"Customer: {feedback['customer']} | "
+                f"Product: {feedback['product']} | "
+                f"Rating: {feedback['rating']}/5 | "
+                f"Comment: {feedback['comment']}"
+            )
+            
+    # Genarate business report
+    
+    def business_report(self):
+        total = len(self.feedback_records)
+        averages = self.product_average_rating()
+        highest = self.highest_rated_product()
+        low_rated = self.low_rated_products()
+
+        print("\n" + "=" * 45)
+        print("       CUSTOMER FEEDBACK REPORT")
+        print("=" * 45)
+
+        print(f"Total feedback records: {total}")
+        print(f"Overall average rating: {self.average_rating():.2f}/5")
+        print(f"Positive feedback: {self.positive_feedback_count()}")
+        print(f"Negative feedback: {self.negative_feedback_count()}")
+
+        print("\nAverage rating by product:")
+
+        if not averages:
+            print("No product ratings available.")
+        else:
+            for product, average in sorted(averages.items()):
+                print(f"- {product}: {average:.2f}/5")
+
+        print("\nHighest-rated product(s):")
+
+        if highest is None:
+            print("No ratings available.")
+        else:
+            for product, average in highest.items():
+                print(f"- {product}: {average:.2f}/5")
+
+        print("\nProducts with average ratings below 3:")
+
+        if not low_rated:
+            print("None")
+        else:
+            for product, average in sorted(low_rated.items()):
+                print(f"- {product}: {average:.2f}/5")
+
+        print("=" * 45)
+
+
+
+# Sample Data
+
+feedback_records = [
+    {
+        "feedback_id": 1,
+        "customer": "Rahim",
+        "product": "Keyboard",
+        "rating": 5,
+        "comment": "Excellent quality"
+    },
+    {
+        "feedback_id": 2,
+        "customer": "Karim",
+        "product": "Mouse",
+        "rating": 2,
+        "comment": "Stopped working quickly"
+    },
+    {
+        "feedback_id": 3,
+        "customer": "Rahim",
+        "product": "Mouse",
+        "rating": 4,
+        "comment": "Good value"
+    },
+    {
+        "feedback_id": 4,
+        "customer": "Sakib",
+        "product": "Monitor",
+        "rating": 3,
+        "comment": "Average performance"
+    },
+    {
+        "feedback_id": 5,
+        "customer": "Nabil",
+        "product": "Keyboard",
+        "rating": 1,
+        "comment": "Uncomfortable to use"
+    },
+    {
+        "feedback_id": 6,
+        "customer": "Hasan",
+        "product": "Monitor",
+        "rating": 5,
+        "comment": "Great display"
+    }
+]
+
+# Run the programm
+
+analyzer = FeedbackAnalyzer(feedback_records)
+
+# Display all records
+analyzer.display_feedback()
+
+# Generate report
+analyzer.business_report()
+
+# Search examples
+print("\nFeedback from Rahim:")
+result=analyzer.search_feedback("customer", "Rahim")
+analyzer.display_feedback(result)
+
+print("\nMouse feedback:")
+result=analyzer.search_feedback("product","Mouse")
+analyzer.display_feedback(result)
+
+print("\nFeedback with rating 5:")
+result=analyzer.search_feedback("rating",5)
+analyzer.display_feedback(result)
+
+
+# Add a new feedback record
+new_feedback = {
+    "feedback_id": 7,
+    "customer": "Karim",
+    "product": "Keyboard",
+    "rating": 4,
+    "comment": "Comfortable and responsive"
+}
+
+print("\nAdding new feedback:")
+analyzer.add_feedback(new_feedback)
+
+# Save all records
+analyzer.save_to_json("feedback.json")
