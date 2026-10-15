@@ -1,0 +1,599 @@
+import json 
+
+
+class InventoryManager :
+    
+    PRODUCT_FIELDS={
+        "product_id",
+        "name",
+        "category",
+        "price",
+        "stock",
+        "restock_level",
+        "supplier_id"
+    }
+    SUPPLIER_FIELDS={
+        "supplier_id",
+        "name"
+    }
+    PURCHASE_FIELDS={
+       "product_id",
+       "quantity",
+       "supplier_id",
+       "purchase_price"
+    }
+   
+    def __init__(self, products=None, suppliers=None) :
+        self.products= {}
+        self.suppliers={}
+        self.purchase_records=[ ]
+        
+        for supplier in suppliers or [ ] :
+            self.add_supplier(supplier,show_message=False)
+            
+        for product in products or [ ] :
+            self.add_product(product,show_message=False)
+            
+    
+    # Validation
+    
+    @staticmethod
+    def valid_positive_int(value) :
+        return (
+            isinstance(value,int) 
+            and not isinstance(value,bool)
+            and value>0
+        )
+    
+    @staticmethod
+    def valid_nonnegative_int(value) :
+        return (
+            isinstance(value,int)
+            and not isinstance(value,bool)
+            and value>=0
+        )
+    
+    @staticmethod
+    def valid_price(value) :
+        return (
+            isinstance(value,(int,float))
+            and not isinstance(value,bool)
+            and value>=0
+        )
+        
+    def validate_supplier(self,supplier) :
+        
+        if not isinstance(supplier,dict) :
+            return False
+        
+        if not self.SUPPLIER_FIELDS.issubset(supplier) :
+            return False
+            
+        id=supplier["supplier_id"]
+        name=supplier["name"]
+        
+        if not self.valid_positive_int(id) :
+            return False
+            
+        if not isinstance(name,str) or not name.strip() :
+            return False
+            
+        return True
+        
+    def validate_product(self,product) :
+        
+        if not isinstance(product,dict) :
+            return False
+            
+        if not self.PRODUCT_FIELDS.issubset(product) :
+            return False
+            
+        product_id=product["product_id"]
+        name=product["name"]
+        category=product["category"]
+        price=product["price"]
+        stock=product["stock"]
+        restock_level=product["restock_level"]
+        supplier_id=product["supplier_id"]
+        
+        if not self.valid_positive_int(product_id) :
+            return False
+            
+        if not isinstance(name,str) or not name.strip() :
+            return False
+            
+        if not isinstance(category,str) or not category.strip() :
+            return False
+            
+        if not self.valid_price(price) :
+            return False
+            
+        if not self.valid_nonnegative_int(stock) :
+            return False
+            
+        if not self.valid_nonnegative_int(restock_level) :
+            return False
+            
+        if not self.valid_positive_int(supplier_id) :
+            return False
+            
+        if supplier_id not in self.suppliers :
+            return False
+            
+        return True
+        
+    def validate_purchase(self, purchase):
+        if not isinstance(purchase, dict):
+            return False
+
+        if not self.PURCHASE_FIELDS.issubset(purchase):
+            return False
+
+        product_id = purchase["product_id"]
+        supplier_id = purchase["supplier_id"]
+        quantity = purchase["quantity"]
+        price = purchase["purchase_price"]
+
+        if not self.valid_positive_int(product_id):
+            return False
+
+        if not self.valid_positive_int(supplier_id):
+            return False
+
+        if not self.valid_positive_int(quantity):
+            return False
+
+        if not self.valid_price(price):
+            return False
+
+        if product_id not in self.products:
+            return False
+
+        if supplier_id not in self.suppliers:
+            return False
+
+        if self.products[product_id]["supplier_id"] != supplier_id:
+            return False
+        
+        return True
+        
+    # 1. Supplier management
+    
+    # Add supplier
+    
+    def add_supplier(self,supplier,show_message=True) :
+        if not self.validate_supplier(supplier) :
+            if show_message :
+                print("Invalid supplier record")
+                
+            return False
+            
+        supplier_id= supplier["supplier_id"]
+        
+        if supplier_id in self.suppliers :
+            if show_message :
+                print("Duplicate ID")
+            return False
+            
+        self.suppliers[supplier_id]= {
+            "supplier_id" : supplier_id,
+            "name" : supplier["name"].strip()
+        }
+        
+        if show_message :
+            print("Supplier added successfully")
+        return True
+    
+    # Search supplier    
+   
+    def search_supplier(self,supplier_id) :
+        return self.suppliers.get(supplier_id)
+        
+    # Product by supplier
+    
+    def products_by_supplier(self,supplier_id) :
+        if supplier_id not in self.suppliers :
+            return [ ]
+            
+        return [ 
+            product
+            for product in self.products.values()
+            if supplier_id==product["supplier_id"]
+        ]
+     
+       
+    # 2.Product management
+    
+    # Add product
+    
+    def add_product(self,product,show_message=True) :
+        if not self.validate_product(product) :
+            if show_message :
+                print("Invalid product data")
+            return False
+            
+        product_id=product["product_id"]
+        
+        if product_id in self.products :
+            if show_message :
+                print("Duplicate product ID")
+            return False
+            
+        new_product=product.copy()
+        new_product["name"]= product["name"].strip()
+        new_product["category"]= product["category"].strip()
+        
+        self.products[product_id]=new_product
+        
+        if show_message :
+            print("Product added successfully")
+        return True
+        
+        
+        # Search product
+        
+    def search_products(self,field,value) :
+        allowed_fields={"product_id","name","category"}
+            
+        if field not in allowed_fields :
+            print("Invalid search field")
+            return [ ]
+        results = [ ]  
+         
+        for product in self.products.values():
+            if field in {"name", "category"}:
+                if product[field].casefold() == str(value).strip().casefold():
+                    results.append(product)
+            elif product[field] == value:
+                results.append(product)
+        
+        return results
+    # Update price
+    
+    def update_price(self,product_id,new_price) :
+        if product_id not in self.products.keys() :
+            print("Product ID is unmatched")
+            return False
+        
+        if not self.valid_price(new_price) :
+            print("Invalid new price")
+            return False
+            
+        self.products[product_id]["price"]=new_price
+        print("Price updated successfully")
+        return True
+        
+    # Restock alerts
+    
+    def restock_alerts(self) :
+        return [
+            product
+            for product in self.products.values()
+            if product["stock"]<=product["restock_level"]
+        ]
+        
+    # 3.Purchase management
+    
+    
+    def record_purchase(self, purchase):
+
+        if not self.validate_purchase(purchase):
+            print("Invalid purchase. Stock was not changed.")
+            return False
+
+        purchase = purchase.copy()
+
+        purchase["total_cost"] = (
+            purchase["quantity"] * purchase["purchase_price"]
+        )
+
+        self.products[purchase["product_id"]]["stock"] += purchase["quantity"]
+        self.purchase_records.append(purchase)
+
+        print("Purchase recorded successfully.")
+        return True
+
+    def total_purchase_cost(self):
+        return sum(
+            purchase["total_cost"]
+            for purchase in self.purchase_records
+        )
+        
+    def total_units(self):
+        return sum(
+            product["stock"]
+            for product in self.products.values()
+        )
+
+    def total_inventory_value(self):
+        return sum(
+            product["stock"] * product["price"]
+            for product in self.products.values()
+        )
+
+    def product_inventory_values(self):
+        return {
+            product["name"]: product["stock"] * product["price"]
+            for product in self.products.values()
+        }
+
+    def most_valuable_product(self):
+        values = self.product_inventory_values()
+
+        if not values:
+            return None
+
+        highest_value = max(values.values())
+
+        return {
+            name: value
+            for name, value in values.items()
+            if value == highest_value
+        }
+
+    def category_summary(self):
+        summary = {}
+
+        for product in self.products.values():
+            category = product["category"]
+
+            if category not in summary:
+                summary[category] = {
+                    "product_count": 0,
+                    "total_units": 0,
+                    "inventory_value": 0
+                }
+
+            summary[category]["product_count"] += 1
+            summary[category]["total_units"] += product["stock"]
+            summary[category]["inventory_value"] += (
+                product["stock"] * product["price"]
+            )
+            
+        return summary
+    
+    def save_to_json(self, filename="inventory.json"):
+        data = {
+            "products": list(self.products.values()),
+            "suppliers": list(self.suppliers.values()),
+            "purchase_records": self.purchase_records
+        }
+
+        try:
+            with open(filename, "w", encoding="utf-8") as file:
+                json.dump(data, file, indent=4, ensure_ascii=False)
+
+            print(f"Data saved to {filename}.")
+            return True
+
+        except (OSError, TypeError, ValueError) as error:
+            print(f"Saving error: {error}")
+            return False
+
+    
+    
+    def load_from_json(self, filename="inventory.json"):
+        try:
+            with open(filename, "r", encoding="utf-8") as file:
+                data = json.load(file)
+
+        except FileNotFoundError:
+            print("File not found.")
+            return False
+
+        except json.JSONDecodeError:
+            print("Invalid JSON format.")
+            return False
+
+        except OSError as error:
+            print(f"File reading error: {error}")
+            return False
+
+        if not isinstance(data, dict):
+            print("JSON root must be a dictionary.")
+            return False
+
+        loaded_suppliers = data.get("suppliers")
+        loaded_products = data.get("products")
+        loaded_purchases = data.get("purchase_records", [])
+
+        if (
+            not isinstance(loaded_suppliers, list)
+            or not isinstance(loaded_products, list)
+            or not isinstance(loaded_purchases, list)
+        ):
+            print("Invalid inventory data structure.")
+            return False
+
+        # Build a temporary manager first.
+        temporary = InventoryManager()
+
+        for supplier in loaded_suppliers:
+            temporary.add_supplier(supplier, show_message=False)
+
+        for product in loaded_products:
+            temporary.add_product(product, show_message=False)
+
+        loaded_count = 0
+        skipped_count = 0
+
+        for purchase in loaded_purchases:
+            if not temporary.validate_purchase(purchase):
+                skipped_count += 1
+                continue
+
+            purchase = purchase.copy()
+            purchase["total_cost"] = (
+                purchase["quantity"] * purchase["purchase_price"]
+            )
+
+            # Save purchase history WITHOUT increasing stock.
+            temporary.purchase_records.append(purchase)
+            loaded_count += 1
+
+        self.products = temporary.products
+        self.suppliers = temporary.suppliers
+        self.purchase_records = temporary.purchase_records
+
+        print("Inventory loaded.")
+        print(f"Valid purchases loaded: {loaded_count}")
+        print(f"Invalid purchases skipped: {skipped_count}")
+        return True
+
+        
+    def record_purchase_silently(self, purchase):
+        if not self.validate_purchase(purchase):
+            return False
+
+        purchase = purchase.copy()
+
+        expected_total = (
+            purchase["quantity"] * purchase["purchase_price"]
+        )
+
+        purchase["total_cost"] = expected_total
+
+        self.products[purchase["product_id"]]["stock"] += purchase["quantity"]
+        self.purchase_records.append(purchase)
+
+        return True
+        
+    def business_report(self):
+        print("\n" + "=" * 48)
+        print("          INVENTORY BUSINESS REPORT")
+        print("=" * 48)
+
+        print(f"Total products: {len(self.products)}")
+        print(f"Total suppliers: {len(self.suppliers)}")
+        print(f"Total units in stock: {self.total_units()}")
+        print(f"Inventory value: {self.total_inventory_value():,.2f} BDT")
+        print(f"Total purchase cost: {self.total_purchase_cost():,.2f} BDT")
+
+        print("\nCategory summary:")
+
+        summary = self.category_summary()
+
+        if not summary:
+            print("No products available.")
+        else:
+            for category, values in sorted(summary.items()):
+                print(
+                    f"- {category}: "
+                    f"{values['product_count']} products, "
+                    f"{values['total_units']} units, "
+                    f"{values['inventory_value']:,.2f} BDT"
+                )
+
+        print("\nMost valuable product(s):")
+
+        valuable = self.most_valuable_product()
+
+        if valuable is None:
+            print("No products available.")
+        else:
+            for name, value in valuable.items():
+                print(f"- {name}: {value:,.2f} BDT")
+
+        print("\nRestock alerts:")
+
+        alerts = self.restock_alerts()
+
+        if not alerts:
+            print("No products need restocking.")
+        else:
+            for product in alerts:
+                print(
+                    f"- {product['name']}: "
+                    f"{product['stock']} units remaining "
+                    f"(threshold: {product['restock_level']})"
+                )
+
+        print("=" * 48)
+        
+# Sample data
+
+products = [
+    {
+        "product_id": 101,
+        "name": "Keyboard",
+        "category": "Electronics",
+        "price": 1200,
+        "stock": 10,
+        "restock_level": 3,
+        "supplier_id": 1
+    },
+    {
+        "product_id": 102,
+        "name": "Mouse",
+        "category": "Electronics",
+        "price": 500,
+        "stock": 4,
+        "restock_level": 5,
+        "supplier_id": 1
+    },
+    {
+        "product_id": 103,
+        "name": "Notebook",
+        "category": "Stationery",
+        "price": 80,
+        "stock": 25,
+        "restock_level": 10,
+        "supplier_id": 2
+    },
+    {
+        "product_id": 104,
+        "name": "Monitor",
+        "category": "Electronics",
+        "price": 15000,
+        "stock": 2,
+        "restock_level": 5,
+        "supplier_id": 1
+    }
+]
+
+suppliers = [
+    {
+        "supplier_id": 1,
+        "name": "Tech Supply BD"
+    },
+    {
+        "supplier_id": 2,
+        "name": "Stationery House"
+    }
+]
+
+
+manager = InventoryManager(products, suppliers)
+
+manager.business_report()
+
+print("\nSearch for Mouse:")
+print(manager.search_products("name", "Mouse"))
+
+print("\nProducts from Tech Supply BD:")
+print(manager.products_by_supplier(1))
+
+# Record a purchase
+purchase = {
+    "product_id": 104,
+    "quantity": 5,
+    "supplier_id": 1,
+    "purchase_price": 12000
+}
+
+print("\nRecording purchase:")
+manager.record_purchase(purchase)
+
+print("\nReport after purchase:")
+manager.business_report()
+
+# Save inventory and purchase history
+manager.save_to_json("inventory.json")
+
+loaded_manager = InventoryManager()
+
+loaded_manager.load_from_json("inventory.json")
+
+print("Monitor stock:", loaded_manager.products[104]["stock"])
+print("Purchase records:", len(loaded_manager.purchase_records))
+print("Total purchase cost:", loaded_manager.total_purchase_cost())
