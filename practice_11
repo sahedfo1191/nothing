@@ -1,0 +1,538 @@
+
+import json
+from datetime import date, datetime
+from calendar import monthrange
+
+
+class EmployeeManager:
+    EMPLOYEE_FIELDS = {
+        "employee_id", "name", "department", "base_salary"
+    }
+
+    RECORD_FIELDS = {"employee_id", "date", "status"}
+    VALID_STATUSES = {"Present", "Absent", "Leave"}
+
+    def __init__(self, employees=None, attendance_records=None):
+        self.employees = {}
+        self.attendance_records = []
+        self.attendance_keys = set()
+
+        for employee in employees or []:
+            self.add_employee(employee, show_message=False)
+
+        for record in attendance_records or []:
+            self.record_attendance(record, show_message=False)
+
+    # -------------------- VALIDATION --------------------
+
+    @staticmethod
+    def valid_positive_int(value):
+        return (
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and value > 0
+        )
+
+    @staticmethod
+    def valid_nonnegative_number(value):
+        return (
+            isinstance(value, (int, float))
+            and not isinstance(value, bool)
+            and value >= 0
+        )
+
+    @staticmethod
+    def valid_str(value):
+        return isinstance(value, str) and bool(value.strip())
+
+    def validate_employee(self, employee):
+        if not isinstance(employee, dict):
+            return False
+
+        if not self.EMPLOYEE_FIELDS.issubset(employee):
+            return False
+
+        if not self.valid_positive_int(employee["employee_id"]):
+            return False
+
+        if not self.valid_str(employee["name"]):
+            return False
+
+        if not self.valid_str(employee["department"]):
+            return False
+
+        if not self.valid_nonnegative_number(employee["base_salary"]):
+            return False
+
+        return True
+
+    def validate_record(self, record, require_employee=True):
+        if not isinstance(record, dict):
+            return False
+
+        if not self.RECORD_FIELDS.issubset(record):
+            return False
+
+        if not self.valid_positive_int(record["employee_id"]):
+            return False
+
+        if require_employee and record["employee_id"] not in self.employees:
+            return False
+
+        if not self.valid_str(record["date"]):
+            return False
+
+        try:
+            parsed_date = date.fromisoformat(record["date"])
+        except (ValueError, TypeError):
+            return False
+
+        if record["date"] != parsed_date.isoformat():
+            return False
+
+        if record["status"] not in self.VALID_STATUSES:
+            return False
+
+        return True
+
+    # -------------------- EMPLOYEE OPERATIONS --------------------
+
+    def add_employee(self, employee, show_message=True):
+        if not self.validate_employee(employee):
+            if show_message:
+                print("Invalid employee data")
+            return False
+
+        employee_id = employee["employee_id"]
+
+        if employee_id in self.employees:
+            if show_message:
+                print("Employee already exists")
+            return False
+
+        new_employee = employee.copy()
+        new_employee["name"] = employee["name"].strip()
+        new_employee["department"] = employee["department"].strip()
+
+        self.employees[employee_id] = new_employee
+
+        if show_message:
+            print("Employee added successfully")
+
+        return True
+
+    def get_employee(self, employee_id, show_message=True):
+        if not self.valid_positive_int(employee_id):
+            if show_message:
+                print("Invalid employee ID")
+            return None
+
+        employee = self.employees.get(employee_id)
+
+        if employee is None:
+            if show_message:
+                print("Employee not found")
+            return None
+
+        return employee.copy()
+
+    def search_employees(self, name=None, department=None):
+        results = []
+
+        for employee in self.employees.values():
+            name_matches = (
+                name is None
+                or (
+                    isinstance(name, str)
+                    and name.casefold() in employee["name"].casefold()
+                )
+            )
+
+            department_matches = (
+                department is None
+                or (
+                    isinstance(department, str)
+                    and department.casefold()
+                    == employee["department"].casefold()
+                )
+            )
+
+            if name_matches and department_matches:
+                results.append(employee.copy())
+
+        return results
+
+    def update_employee(self, employee_id, updates, show_message=True):
+        if not self.valid_positive_int(employee_id):
+            if show_message:
+                print("Invalid employee ID")
+            return False
+
+        if employee_id not in self.employees:
+            if show_message:
+                print("Employee not found")
+            return False
+
+        if not isinstance(updates, dict) or not updates:
+            if show_message:
+                print("Invalid update data")
+            return False
+
+        allowed_fields = {"name", "department", "base_salary"}
+
+        if not updates.keys() <= allowed_fields:
+            if show_message:
+                print("Invalid update field")
+            return False
+
+        # Validate all values before changing anything.
+        for key, value in updates.items():
+            if key in {"name", "department"}:
+                if not self.valid_str(value):
+                    if show_message:
+                        print("Invalid update value")
+                    return False
+
+            elif key == "base_salary":
+                if not self.valid_nonnegative_number(value):
+                    if show_message:
+                        print("Invalid salary")
+                    return False
+
+        for key, value in updates.items():
+            if key in {"name", "department"}:
+                value = value.strip()
+
+            self.employees[employee_id][key] = value
+
+        if show_message:
+            print("Employee updated successfully")
+
+        return True
+
+    def delete_employee(self, employee_id, show_message=True):
+        if not self.valid_positive_int(employee_id):
+            if show_message:
+                print("Invalid employee ID")
+            return False
+
+        if employee_id not in self.employees:
+            if show_message:
+                print("Employee not found")
+            return False
+
+        # Preserve historical attendance records.
+        del self.employees[employee_id]
+
+        if show_message:
+            print("Employee deleted successfully")
+
+        return True
+
+    # -------------------- ATTENDANCE OPERATIONS --------------------
+
+    def record_attendance(self, record, show_message=True):
+        if not self.validate_record(record):
+            if show_message:
+                print("Invalid attendance data")
+            return False
+
+        key = (record["employee_id"], record["date"])
+
+        if key in self.attendance_keys:
+            if show_message:
+                print("Attendance already recorded for this date")
+            return False
+
+        new_record = record.copy()
+        new_record["status"] = record["status"].strip()
+
+        self.attendance_records.append(new_record)
+        self.attendance_keys.add(key)
+
+        if show_message:
+            print("Attendance recorded successfully")
+
+        return True
+
+    def search_attendance(
+        self, employee_id=None, start_date=None, end_date=None
+    ):
+        # Validate optional filters.
+        if employee_id is not None:
+            if not self.valid_positive_int(employee_id):
+                raise ValueError("Invalid employee ID")
+
+        if start_date is not None:
+            start_date = date.fromisoformat(start_date)
+
+        if end_date is not None:
+            end_date = date.fromisoformat(end_date)
+
+        if start_date and end_date and start_date > end_date:
+            raise ValueError("Start date must not be after end date")
+
+        results = []
+
+        for record in self.attendance_records:
+            record_date = date.fromisoformat(record["date"])
+
+            if (
+                employee_id is not None
+                and record["employee_id"] != employee_id
+            ):
+                continue
+
+            if start_date and record_date < start_date:
+                continue
+
+            if end_date and record_date > end_date:
+                continue
+
+            results.append(record.copy())
+
+        return results
+
+    def attendance_summary(self, employee_id, year, month):
+        if not self.valid_positive_int(employee_id):
+            raise ValueError("Invalid employee ID")
+
+        if employee_id not in self.employees:
+            raise ValueError("Employee not found")
+
+        if not self.valid_positive_int(year):
+            raise ValueError("Invalid year")
+
+        if not self.valid_positive_int(month) or month > 12:
+            raise ValueError("Month must be between 1 and 12")
+
+        summary = {
+            "Present": 0,
+            "Absent": 0,
+            "Leave": 0
+        }
+
+        for record in self.attendance_records:
+            record_date = date.fromisoformat(record["date"])
+
+            if (
+                record["employee_id"] == employee_id
+                and record_date.year == year
+                and record_date.month == month
+            ):
+                summary[record["status"]] += 1
+
+        summary["total_recorded_days"] = sum(summary.values())
+        return summary
+
+    # -------------------- PAYROLL AND REPORTING --------------------
+
+    def calculate_salary(self, employee_id, year, month):
+        """
+        Assumption:
+        base_salary is the full monthly salary.
+        Absent days are unpaid; Present and Leave days are paid.
+        Salary is prorated using calendar days in the month.
+        """
+        employee = self.get_employee(employee_id, show_message=False)
+
+        if employee is None:
+            raise ValueError("Employee not found")
+
+        if not self.valid_positive_int(year):
+            raise ValueError("Invalid year")
+
+        if not self.valid_positive_int(month) or month > 12:
+            raise ValueError("Month must be between 1 and 12")
+
+        days_in_month = monthrange(year, month)[1]
+        summary = self.attendance_summary(employee_id, year, month)
+
+        unpaid_days = summary["Absent"]
+        daily_salary = employee["base_salary"] / days_in_month
+        deduction = daily_salary * unpaid_days
+        net_salary = employee["base_salary"] - deduction
+
+        return {
+            "employee_id": employee_id,
+            "name": employee["name"],
+            "year": year,
+            "month": month,
+            "base_salary": employee["base_salary"],
+            "present_days": summary["Present"],
+            "absent_days": summary["Absent"],
+            "leave_days": summary["Leave"],
+            "deduction": round(deduction, 2),
+            "net_salary": round(net_salary, 2)
+        }
+
+    def department_payroll(self, year, month):
+        totals = {}
+
+        for employee_id, employee in self.employees.items():
+            payroll = self.calculate_salary(employee_id, year, month)
+            department = employee["department"]
+
+            totals[department] = (
+                totals.get(department, 0) + payroll["net_salary"]
+            )
+
+        return {
+            department: round(total, 2)
+            for department, total in totals.items()
+        }
+
+    def highest_paid_employee(self):
+        if not self.employees:
+            return None
+
+        employee = max(
+            self.employees.values(),
+            key=lambda emp: emp["base_salary"]
+        )
+
+        return employee.copy()
+
+    def most_absent_employee(self, year, month):
+        if not self.employees:
+            return None
+
+        results = []
+
+        for employee_id, employee in self.employees.items():
+            summary = self.attendance_summary(employee_id, year, month)
+
+            results.append({
+                "employee_id": employee_id,
+                "name": employee["name"],
+                "department": employee["department"],
+                "absent_days": summary["Absent"]
+            })
+
+        return max(results, key=lambda item: item["absent_days"])
+
+    def business_report(self, year, month):
+        payrolls = [
+            self.calculate_salary(employee_id, year, month)
+            for employee_id in self.employees
+        ]
+
+        return {
+            "employee_count": len(self.employees),
+            "attendance_record_count": len(self.attendance_records),
+            "total_payroll": round(
+                sum(item["net_salary"] for item in payrolls), 2
+            ),
+            "department_payroll": self.department_payroll(year, month),
+            "highest_paid_employee": self.highest_paid_employee(),
+            "most_absent_employee": self.most_absent_employee(year, month),
+            "employee_payrolls": payrolls
+        }
+
+    # -------------------- JSON STORAGE --------------------
+
+    def save_to_json(self, filename="employee_data.json"):
+        data = {
+            "employees": list(self.employees.values()),
+            "attendance_records": self.attendance_records
+        }
+
+        with open(filename, "w", encoding="utf-8") as file:
+            json.dump(data, file, indent=4)
+
+        return True
+
+    def load_from_json(self, filename="employee_data.json"):
+        # Read and parse before modifying current data.
+        with open(filename, "r", encoding="utf-8") as file:
+            data = json.load(file)
+
+        if not isinstance(data, dict):
+            raise ValueError("Invalid JSON data format")
+
+        employees = data.get("employees", [])
+        records = data.get("attendance_records", [])
+
+        if not isinstance(employees, list):
+            raise ValueError("Employees must be a list")
+
+        if not isinstance(records, list):
+            raise ValueError("Attendance records must be a list")
+
+        # Build temporary state so malformed input cannot partially
+        # replace the current manager's data.
+        temporary = EmployeeManager()
+
+        for employee in employees:
+            temporary.add_employee(employee, show_message=False)
+
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+
+            # Keep historical records for employees who were deleted.
+            if not temporary.validate_record(
+                record, require_employee=False
+            ):
+                continue
+
+            key = (record["employee_id"], record["date"])
+
+            if key in temporary.attendance_keys:
+                continue
+
+            temporary.attendance_records.append(record.copy())
+            temporary.attendance_keys.add(key)
+
+        self.employees = temporary.employees
+        self.attendance_records = temporary.attendance_records
+        self.attendance_keys = temporary.attendance_keys
+
+        return True
+
+
+employees = [
+    {
+        "employee_id": 101,
+        "name": "Rahim",
+        "department": "IT",
+        "base_salary": 30000
+    },
+    {
+        "employee_id": 102,
+        "name": "Karim",
+        "department": "HR",
+        "base_salary": 25000
+    }
+]
+
+attendance = [
+    {
+        "employee_id": 101,
+        "date": "2026-10-01",
+        "status": "Present"
+    },
+    {
+        "employee_id": 101,
+        "date": "2026-10-02",
+        "status": "Absent"
+    },
+    {
+        "employee_id": 102,
+        "date": "2026-10-01",
+        "status": "Leave"
+    }
+]
+
+manager = EmployeeManager(employees, attendance)
+
+print(manager.get_employee(101))
+print(manager.search_attendance(employee_id=101))
+
+print(manager.attendance_summary(101, 2026, 10))
+print(manager.calculate_salary(101, 2026, 10))
+
+print(manager.department_payroll(2026, 10))
+print(manager.business_report(2026, 10))
+
+manager.save_to_json()
